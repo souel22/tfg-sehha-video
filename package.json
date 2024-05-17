@@ -1,0 +1,32 @@
+{
+  "name": "sehha-video",
+  "version": "1.0.0",
+  "description": "The sehha application module in charge of managing the video part pf the videocinsultation",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/souel22/sehha-video.git"
+  },
+  "keywords": [
+    "sehha",
+    "videoconsultation",
+    "\u001b[D\u001b[D\u001b[D\u001b[D\u001b[D\u001b[D\u001b[D\u001b[D\u001b[D\u001b[D\u001b[D\u001b[D\u001b[D\u001b[D\u001b[D\u001b[D\u001b[D\u001b[D\u001b[D\u001b[D",
+    "\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[Cvideo",
+    "telehealth",
+    "telemedicine"
+  ],
+  "author": "Soulaiman El Maimouni Mechbal",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/souel22/sehha-video/issues"
+  },
+  "homepage": "https://github.com/souel22/sehha-video#readme",
+  "dependencies": {
+    "express": "^4.19.2",
+    "socket.io": "^4.7.5"
+  }
+}
