@@ -1,14 +1,39 @@
 require('dotenv').config();
 const express = require('express');
+const http = require('http');
+const socketIo = require('socket.io');
+const mongoose = require('mongoose');
 const cors = require('cors');
-const app = express();
-app.use(cors());
-const server = require('http').createServer(app);
-const io = require('socket.io')(server, {
-  cors: { origin: 'http://localhost:3001' }
-});
-const PORT = process.env.PORT || 8080;
+const errorHandler = require('./middlewares/errorHandler');
+const logger = require('./utils/logger');
+const socketController = require('./controllers/socketController');
+const setupRabbitMQConsumer = require('./controllers/rabbitmqController');
 
+const app = express();
+
+// Middlewares
+app.use(cors({ origin: process.env.CORS_ORIGIN }));
+app.use(logger);
+
+// Connect to MongoDB
+mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
+  .then(() => console.log('MongoDB connected'))
+  .catch(err => console.error('MongoDB connection error:', err));
+
+// Configure RabbitMQ consumers
+setupRabbitMQConsumer().then(() => {
+  console.log('RabbitMQ consumer setup complete');
+}).catch(err => {
+  console.error('Error setting up RabbitMQ consumer:', err);
+});
+
+// Create http server and configure socket.io
+const server = http.createServer(app);
+const io = socketIo(server, {
+  cors: { origin: process.env.CORS_ORIGIN }
+});
+
+// Handle socket.io messages
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
 
@@ -19,54 +44,15 @@ io.on('connection', (socket) => {
 
     switch (messageType) {
       case 'ready':
-        const roomName = message.room;
-        const room = io.sockets.adapter.rooms.get(roomName) || new Set();
-        const numClients = room.size;
-
-        console.log(`Users in the room (${roomName}):`, numClients);
-        console.log("Room", room);
-        console.log("Message Room", roomName);
-
-        if (numClients === 0) {
-          socket.join(roomName);
-          message.type = "create-room";
-          socket.broadcast.to(roomName).emit('message', message);
-          console.log("Room created");
-
-          const updatedRoom = io.sockets.adapter.rooms.get(roomName);
-          console.log("Room", updatedRoom);
-          console.log("Number of clients", updatedRoom.size);
-        } else if (numClients === 1) {
-          socket.join(roomName);
-          message.type = "join-room";
-          socket.broadcast.to(roomName).emit('message', message);
-          console.log("Room joined");
-
-          const updatedRoom = io.sockets.adapter.rooms.get(roomName);
-          console.log("Room", updatedRoom);
-          console.log("Number of clients", updatedRoom.size);
-        } else if (numClients >= 2) {
-          console.log("Room full");
-          const updatedRoom = io.sockets.adapter.rooms.get(roomName);
-          console.log("Room", updatedRoom);
-          console.log("Number of clients", updatedRoom.size);
-        }
+        socketController.handleReadyMessage(io, socket, message);
         break;
-      case "offer":
-      case "answer":
-      case "candidate":
-        console.log("Message type forwarded:", message.type);
-        console.log("Room:", message.room);
-        if (socket.rooms.has(message.room)) {
-          socket.to(message.room).emit('message', message);
-        }
+      case 'offer':
+      case 'answer':
+      case 'candidate':
+        socketController.handleRtcMessage(socket, message);
         break;
-      case "bye":
-        console.log("Handling bye for room:", message.room);
-        if (socket.rooms.has(message.room)) {
-          socket.to(message.room).emit('message', message);
-          socket.leave(message.room);
-        }
+      case 'bye':
+        socketController.handleByeMessage(socket, message);
         break;
       default:
         console.log('Unhandled message type:', messageType);
@@ -75,17 +61,14 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnect', () => {
-    console.log("Client disconnected:", socket.id);
+    console.log('Client disconnected:', socket.id);
   });
 });
 
-function error(err, req, res, next) {
-  console.error(err.stack);
-  res.status(500).send('Internal Server Error');
-}
+// Error handling middleware 
+app.use(errorHandler);
 
-app.use(error);
-
-server.listen(PORT, () => {
-  console.log('Listening on port', PORT);
+// Start server
+server.listen(process.env.PORT, () => {
+  console.log('Listening on port', process.env.PORT);
 });
