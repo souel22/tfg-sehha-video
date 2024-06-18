@@ -14,7 +14,7 @@ RUN npm install
 COPY . .
 
 # Your application listens on port 3000, make sure the container does too
-EXPOSE 3000
+EXPOSE 5000
 
 # Command to run your application
 CMD ["npm", "start"]
