@@ -15,8 +15,12 @@ const app = express();
 app.use(cors({ origin: process.env.CORS_ORIGIN }));
 app.use(logger);
 
+const db = process.env.MONGO_URI.replace( "<password>",
+  process.env.DB_PASSWORD
+);
+
 // Connect to MongoDB
-mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
+mongoose.connect(db, { useNewUrlParser: true, useUnifiedTopology: true })
   .then(() => console.log('MongoDB connected'))
   .catch(err => console.error('MongoDB connection error:', err));
 

@@ -52,28 +52,61 @@ const handleReadyMessage = async (io, socket, message) => {
       console.log('User not authorized to join this room');
     }
   } catch (error) {
-    console.log('Token verification failed:', error.message);
+    console.log('Token'+ message.token+' verification failed:', error.message);
   }
 };
 
 const handleRtcMessage = (socket, message) => {
-  if (socket.rooms.has(message.room)) {
-    socket.to(message.room).emit('message', message);
+  try {
+    const decodedToken = verifyToken(message.token);
+    const userId = decodedToken.id;
+    const userRole = decodedToken.role;
+
+    // Ensure the user has access to the room
+    const roomName = message.room;
+    const appointment = Appointment.findOne({ appointmentId: roomName });
+    if (appointment && (
+        (userRole === 'user' && appointment.user.toString() === userId) ||
+        (userRole === 'specialist' && appointment.specialist.toString() === userId)
+    )) {
+      if (socket.rooms.has(message.room)) {
+        socket.to(message.room).emit('message', message);
+      }
+    } else {
+      console.log('User not authorized to send message to this room');
+    }
+  } catch (error) {
+    console.log('Token verification failed:', error.message);
   }
 };
 
 const handleByeMessage = async (socket, message) => {
-  if (socket.rooms.has(message.room)) {
-    socket.to(message.room).emit('message', message);
-    socket.leave(message.room);
+  try {
+    const decodedToken = verifyToken(message.token);
+    const userId = decodedToken.id;
+    const userRole = decodedToken.role;
 
-    // Register the desconnection and update state 
-    const appointment = await Appointment.findOne({ appointmentId: message.room });
-    if (appointment) {
-      appointment.events.push({ event: 'bye', timestamp: new Date() });
-      appointment.status = 'completed';
-      await appointment.save();
+    // Ensure the user has access to the room
+    const roomName = message.room;
+    const appointment = await Appointment.findOne({ appointmentId: roomName });
+    if (appointment && (
+        (userRole === 'user' && appointment.user.toString() === userId) ||
+        (userRole === 'specialist' && appointment.specialist.toString() === userId)
+    )) {
+      if (socket.rooms.has(message.room)) {
+        socket.to(message.room).emit('message', message);
+        socket.leave(message.room);
+
+        // Register the disconnection and update state 
+        appointment.events.push({ event: 'bye', timestamp: new Date() });
+        appointment.status = 'completed';
+        await appointment.save();
+      }
+    } else {
+      console.log('User not authorized to leave this room');
     }
+  } catch (error) {
+    console.log('Token verification failed:', error.message);
   }
 };
 

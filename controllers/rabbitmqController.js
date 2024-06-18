@@ -5,8 +5,8 @@ const handleAppointmentMessage = async (msg) => {
   const appointmentData = JSON.parse(msg.content.toString());
 
   const appointment = new Appointment({
-    user: appointmentData.user,
-    specialist: appointmentData.specialist,
+    user: appointmentData.userId,
+    specialist: appointmentData.specialistId,
     appointmentId: appointmentData.appointmentId,
     events: [{ event: 'appointment_created', timestamp: new Date() }]
   });
