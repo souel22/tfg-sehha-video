@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: sehha-video-service
+  namespace: sehha-app
+spec:
+  selector:
+    app: sehha-video
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 5000
