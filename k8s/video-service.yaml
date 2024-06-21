@@ -6,6 +6,7 @@ metadata:
 spec:
   selector:
     app: sehha-video
+  type: LoadBalancer
   ports:
     - protocol: TCP
       port: 80

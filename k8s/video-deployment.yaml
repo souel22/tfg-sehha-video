@@ -22,7 +22,7 @@ spec:
         - name: PORT
           value: "5000"
         - name: CORS_ORIGIN
-          value: "*"
+          value: "http://aa317d99c15c24893bd6e1cb69e91c0d-84185983.eu-west-2.elb.amazonaws.com"
         - name: MONGO_URI
           value: "mongodb+srv://sehha-appointment:<password>@sehha-appointment-clust.0i73oe0.mongodb.net/videos?retryWrites=true&w=majority&appName=sehha-appointment-cluster"
         - name: RABBITMQ_URL
