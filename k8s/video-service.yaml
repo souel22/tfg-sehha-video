@@ -3,11 +3,21 @@ kind: Service
 metadata:
   name: sehha-video-service
   namespace: sehha-app
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-ssl-cert: "arn:aws:acm:eu-west-2:127117182535:certificate/cd85a40b-a153-4aa7-9f28-7b5d556ed44e"
+    service.beta.kubernetes.io/aws-load-balancer-backend-protocol: "http"
+    service.beta.kubernetes.io/aws-load-balancer-ssl-ports: "443"
+    service.beta.kubernetes.io/aws-load-balancer-connection-idle-timeout: "3600"
 spec:
   selector:
     app: sehha-video
   type: LoadBalancer
   ports:
-    - protocol: TCP
+    - name: http
+      protocol: TCP
       port: 80
+      targetPort: 5000
+    - name: https
+      protocol: TCP
+      port: 443
       targetPort: 5000
