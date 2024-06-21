@@ -19,30 +19,31 @@ const handleReadyMessage = async (io, socket, message) => {
     const userId = decodedToken.id;
     const userRole = decodedToken.role;
 
-    // Validate that the user is a specialist or a user
     if ((userRole === 'user' && appointment.user.toString() === userId) ||
         (userRole === 'specialist' && appointment.specialist.toString() === userId)) {
       
-      if (numClients === 0) {
-        socket.join(roomName);
-        message.type = "create-room";
-        socket.broadcast.to(roomName).emit('message', message);
-        console.log("Room created");
+      if ((userRole === 'user' && appointment.userConnected) || 
+          (userRole === 'specialist' && appointment.specialistConnected)) {
+        console.log(`${userRole} already connected`);
+        return;
+      }
 
-        // Room creation event
-        appointment.events.push({ event: 'create-room', timestamp: new Date() });
-        await appointment.save();
-      } else if (numClients === 1) {
+      if (numClients === 0 || numClients === 1) {
         socket.join(roomName);
-        message.type = "join-room";
-        socket.broadcast.to(roomName).emit('message', message);
-        console.log("Room joined");
 
-        // room joining event
-        appointment.events.push({ event: 'join-room', timestamp: new Date() });
+        if (userRole === 'user') {
+          appointment.userConnected = true;
+        } else if (userRole === 'specialist') {
+          appointment.specialistConnected = true;
+        }
+
         await appointment.save();
 
-        // Change the appointment to active
+        message.type = numClients === 0 ? "create-room" : "join-room";
+        socket.broadcast.to(roomName).emit('message', message);
+        console.log(numClients === 0 ? "Room created" : "Room joined");
+
+        appointment.events.push({ event: message.type, timestamp: new Date() });
         appointment.status = 'active';
         await appointment.save();
       } else {
@@ -52,19 +53,18 @@ const handleReadyMessage = async (io, socket, message) => {
       console.log('User not authorized to join this room');
     }
   } catch (error) {
-    console.log('Token'+ message.token+' verification failed:', error.message);
+    console.log('Token verification failed:', error.message);
   }
 };
 
-const handleRtcMessage = (socket, message) => {
+const handleRtcMessage = async (socket, message) => {
   try {
     const decodedToken = verifyToken(message.token);
     const userId = decodedToken.id;
     const userRole = decodedToken.role;
 
-    // Ensure the user has access to the room
     const roomName = message.room;
-    const appointment = Appointment.findOne({ appointmentId: roomName });
+    const appointment = await Appointment.findOne({ appointmentId: roomName });
     if (appointment && (
         (userRole === 'user' && appointment.user.toString() === userId) ||
         (userRole === 'specialist' && appointment.specialist.toString() === userId)
@@ -86,7 +86,6 @@ const handleByeMessage = async (socket, message) => {
     const userId = decodedToken.id;
     const userRole = decodedToken.role;
 
-    // Ensure the user has access to the room
     const roomName = message.room;
     const appointment = await Appointment.findOne({ appointmentId: roomName });
     if (appointment && (
@@ -97,9 +96,14 @@ const handleByeMessage = async (socket, message) => {
         socket.to(message.room).emit('message', message);
         socket.leave(message.room);
 
-        // Register the disconnection and update state 
+        if (userRole === 'user') {
+          appointment.userConnected = false;
+        } else if (userRole === 'specialist') {
+          appointment.specialistConnected = false;
+        }
+
         appointment.events.push({ event: 'bye', timestamp: new Date() });
-        appointment.status = 'completed';
+        appointment.status = appointment.userConnected || appointment.specialistConnected ? 'active' : 'completed';
         await appointment.save();
       }
     } else {

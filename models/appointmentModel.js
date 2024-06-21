@@ -9,6 +9,8 @@ const appointmentSchema = new mongoose.Schema({
     event: String,
     timestamp: { type: Date, default: Date.now }
   }],
+  userConnected: { type: Boolean, default: false },
+  specialistConnected: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now }
 });
 
