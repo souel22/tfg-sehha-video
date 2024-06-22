@@ -22,28 +22,43 @@ const handleReadyMessage = async (io, socket, message) => {
     if ((userRole === 'user' && appointment.user.toString() === userId) ||
         (userRole === 'specialist' && appointment.specialist.toString() === userId)) {
       
-      if ((userRole === 'user' && appointment.userConnected) || 
+      // Check if a client of the same role is already connected
+      if ((userRole === 'user' && appointment.userConnected) ||
           (userRole === 'specialist' && appointment.specialistConnected)) {
-        console.log(`${userRole} already connected`);
+        console.log(`A client of role ${userRole} is already connected.`);
         return;
       }
 
-      if (numClients === 0 || numClients === 1) {
+      if (numClients === 0) {
         socket.join(roomName);
+        message.type = "create-room";
+        socket.broadcast.to(roomName).emit('message', message);
+        console.log("Room created");
 
+        appointment.events.push({ event: 'create-room', timestamp: new Date() });
         if (userRole === 'user') {
           appointment.userConnected = true;
-        } else if (userRole === 'specialist') {
+          appointment.userSocketId = socket.id;
+        } else {
           appointment.specialistConnected = true;
+          appointment.specialistSocketId = socket.id;
+        }
+        await appointment.save();
+      } else if (numClients === 1) {
+        socket.join(roomName);
+        message.type = "join-room";
+        socket.broadcast.to(roomName).emit('message', message);
+        console.log("Room joined");
+
+        appointment.events.push({ event: 'join-room', timestamp: new Date() });
+        if (userRole === 'user') {
+          appointment.userConnected = true;
+          appointment.userSocketId = socket.id;
+        } else {
+          appointment.specialistConnected = true;
+          appointment.specialistSocketId = socket.id;
         }
 
-        await appointment.save();
-
-        message.type = numClients === 0 ? "create-room" : "join-room";
-        socket.broadcast.to(roomName).emit('message', message);
-        console.log(numClients === 0 ? "Room created" : "Room joined");
-
-        appointment.events.push({ event: message.type, timestamp: new Date() });
         appointment.status = 'active';
         await appointment.save();
       } else {
@@ -96,14 +111,15 @@ const handleByeMessage = async (socket, message) => {
         socket.to(message.room).emit('message', message);
         socket.leave(message.room);
 
+        appointment.events.push({ event: 'bye', timestamp: new Date() });
         if (userRole === 'user') {
           appointment.userConnected = false;
-        } else if (userRole === 'specialist') {
+          appointment.userSocketId = null;
+        } else {
           appointment.specialistConnected = false;
+          appointment.specialistSocketId = null;
         }
-
-        appointment.events.push({ event: 'bye', timestamp: new Date() });
-        appointment.status = appointment.userConnected || appointment.specialistConnected ? 'active' : 'completed';
+        appointment.status = 'completed';
         await appointment.save();
       }
     } else {
@@ -114,8 +130,25 @@ const handleByeMessage = async (socket, message) => {
   }
 };
 
+const handleDisconnect = async (socket) => {
+  const appointment = await Appointment.findOne({ $or: [{ userSocketId: socket.id }, { specialistSocketId: socket.id }] });
+  if (appointment) {
+    if (appointment.userSocketId === socket.id) {
+      appointment.userConnected = false;
+      appointment.userSocketId = null;
+    } else if (appointment.specialistSocketId === socket.id) {
+      appointment.specialistConnected = false;
+      appointment.specialistSocketId = null;
+    }
+
+    await appointment.save();
+    console.log(`Client disconnected: ${socket.id}`);
+  }
+};
+
 module.exports = {
   handleReadyMessage,
   handleRtcMessage,
-  handleByeMessage
+  handleByeMessage,
+  handleDisconnect
 };

@@ -5,12 +5,14 @@ const appointmentSchema = new mongoose.Schema({
   specialist: { type: mongoose.Schema.Types.ObjectId, ref: 'Specialist', required: true },
   appointmentId: { type: String, required: true, unique: true },
   status: { type: String, default: 'pending' }, // pending, active, completed, cancelled
+  userConnected: { type: Boolean, default: false },
+  specialistConnected: { type: Boolean, default: false },
+  userSocketId: { type: String, default: null },
+  specialistSocketId: { type: String, default: null },
   events: [{
     event: String,
     timestamp: { type: Date, default: Date.now }
   }],
-  userConnected: { type: Boolean, default: false },
-  specialistConnected: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now }
 });
 
