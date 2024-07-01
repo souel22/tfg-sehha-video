@@ -9,6 +9,7 @@ const appointmentSchema = new mongoose.Schema({
   specialistConnected: { type: Boolean, default: false },
   userSocketId: { type: String, default: null },
   specialistSocketId: { type: String, default: null },
+  numClients: { type: Number, default: 0 },
   events: [{
     event: String,
     timestamp: { type: Date, default: Date.now }
